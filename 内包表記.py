@@ -6,15 +6,24 @@ def check_hw(data_list):
     total_hw = sum(item["time"] for item in data_list if item["is_hw"] == True)
     return total_hw
 
+def make_task():
+    
+    new_task_name = input("タスク名を入力してください（'None'と入力で終了）: ")
+
+    if new_task_name == "None":
+        return None
+    
+    else:
+        new_task_time = float(input(f"「{new_task_name}」の時間を入力してください: "))
+        is_hw_qs = input("これは家事ですか？y/n")
+        is_hw_an = True if is_hw_qs.lower() == 'y' else False
+        return {"name": new_task_name, "time": new_task_time, "is_hw":is_hw_an}
+
+
 def main():
     
     todo_list = []
 
-    """
-    todo_list.append({"name": "掃除", "time": 1})
-    todo_list.append({"name": "Python学習", "time": 2})
-    todo_list.append({"name":"料理","time":1})
-    """
     # 初期値入力
     todo_list.extend([
         {"name": "掃除", "time": 1,"is_hw":True},
@@ -24,28 +33,20 @@ def main():
 
 
     # ユーザー入力
-    print("--- タスク登録 （'None'と入力で終了）---")
+    print("--- タスク登録開始---")
     while True:
-        new_task_name = input("タスク名を入力してください: ")
-
-        if new_task_name == "None":
+        new_task = make_task()
+        if new_task is None:
             break
-        
-        # 時間の入力
-        # intからfloayに修正した
-        new_task_time = float(input(f"「{new_task_name}」の時間を入力してください: "))
-        # 家事かどうか聞く
-        is_hw_qs = input("これは家事ですか？y/n")
-        is_hw_an = True if is_hw_qs.lower() == 'y' else False
-
+        todo_list.append(new_task)
+        """
         # リストに追加
         todo_list.append({"name": new_task_name, "time": new_task_time, "is_hw":is_hw_an})
-    
-    """
-    new_task_name = "Javascript勉強"
-    new_task_time = 3
-    todo_list.append({"name": new_task_name, "time": new_task_time})
-    """
+        """
+
+
+
+
 
     total = check_limit(todo_list)
     total_hw = check_hw(todo_list)
@@ -62,12 +63,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-"""
-【本日の学習サマリー】
-・辞書のリスト ＝ 構造化されたCSVのようなもの
-・算術代入演算子（+= 等）の活用
-・データとロジックの分離（引数の活用）
-・リスト操作（append / extend）
-・whileループとinputによる対話実装
-・内包表記によるスマートな集計
-"""
