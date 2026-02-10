@@ -14,7 +14,13 @@ def make_task():
         return None
     
     else:
-        new_task_time = float(input(f"「{new_task_name}」の時間を入力してください: "))
+        while True:
+            try:
+                new_task_time = float(input(f"「{new_task_name}」の時間を入力してください: "))
+                break
+            except:
+                print("数字で入力してください")
+
         is_hw_qs = input("これは家事ですか？y/n")
         is_hw_an = True if is_hw_qs.lower() == 'y' else False
         return {"name": new_task_name, "time": new_task_time, "is_hw":is_hw_an}
