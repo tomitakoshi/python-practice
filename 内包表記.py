@@ -45,14 +45,6 @@ def main():
         if new_task is None:
             break
         todo_list.append(new_task)
-        """
-        # リストに追加
-        todo_list.append({"name": new_task_name, "time": new_task_time, "is_hw":is_hw_an})
-        """
-
-
-
-
 
     total = check_limit(todo_list)
     total_hw = check_hw(todo_list)
