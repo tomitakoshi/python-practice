@@ -1,0 +1,22 @@
+[
+    {
+        "name": "掃除",
+        "time": 1,
+        "is_hw": true
+    },
+    {
+        "name": "Python学習",
+        "time": 2,
+        "is_hw": false
+    },
+    {
+        "name": "料理",
+        "time": 1,
+        "is_hw": true
+    },
+    {
+        "name": "B",
+        "time": 3.0,
+        "is_hw": true
+    }
+]
