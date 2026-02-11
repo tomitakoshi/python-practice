@@ -40,14 +40,21 @@ class TodoApp:
 def main():
     app = TodoApp()
     app.show_tasks()
-    t_f = input("タスクを追加する場合はt/削除する場合はf")
-    if t_f == "t":
-        new_task = input("追加するタスクを入力してください: ")
-        app.add_task(new_task)
+    
+    while True:
+        t_f = input("タスクを追加する場合はt/削除する場合はf")
+        if t_f == "t":
+            new_task = input("追加するタスクを入力してください: ")
+            app.add_task(new_task)
+            break
 
-    elif t_f == "f":
-        del_task = input("削除するタスク名を入力してください")
-        app.remove_task(del_task)
+        elif t_f == "f":
+            del_task = input("削除するタスク名を入力してください")
+            app.remove_task(del_task)
+            break
+
+        else:
+            print("もう一度入力してください")
 
 if __name__ == "__main__":
     main()
