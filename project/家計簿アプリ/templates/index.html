@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>共有家計簿アプリ</title>
+</head>
+<body>
+    <h1>💰 共有家計簿アプリ</h1>
+
+    <div style="background-color: #f0f8ff; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+        <p>現在の総支出: <strong>{{ total }}円</strong></p>
+        <p>今月の残り予算: <strong style="color: red;">{{ remaining }}円</strong></p>
+    </div>
+
+    <form action="/add" method="POST">
+        <input type="date" name="date" required>
+        <input type="number" name="amount" placeholder="金額を入力" required>
+        <select name="category">
+            <option value="食費">食費</option>
+            <option value="日用品">日用品</option>
+            <option value="娯楽">娯楽</option>
+        </select>
+        <button type="submit">記録する</button>
+    </form>
+    <hr>
+
+<h3>📋 支出履歴</h3>
+<table border="1" style="width: 100%; border-collapse: collapse;">
+    <thead>
+        <tr style="background-color: #eee;">
+            <th>日付</th>
+            <th>分類</th>
+            <th>金額</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in history %}
+        <tr>
+            <td>{{ item.date }}</td>
+            <td>{{ item.category }}</td>
+            <td>{{ item.amount }}円</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</body>
+</html>
