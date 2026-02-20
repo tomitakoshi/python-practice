@@ -1,59 +1,70 @@
+"""
+この方法ではできなかったけど記録だけ残しておく
+"""
+
 import pandas as pd
 import urllib.parse
 import requests
 from bs4 import BeautifulSoup
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
 import time
-import re
 
 # 設定：ここを実際のファイル名に合わせてください
 CSV_FILE = 'C:/Users/tomit/python-practice/project/相場-損益分岐チェッカー-GN/相場チェッカー/list.csv'
 
 def get_yahoo_average(product_name):
     clean_name = product_name.replace('/', ' ').strip()
-    params = {'va': clean_name, 'ei': 'UTF-8', 'f_adv': 1, 'fr': 'auc_adv'}
+    
+    params = {
+            'va': clean_name,   # 「すべてのキーワードを含む」に商品名を投入
+            'vo': '',
+            've': '',
+            'auccat': 0,
+            'aucminprice': '',
+            'aucmaxprice': '',
+            'slider': 0,
+            'ei': 'UTF-8',
+            'f_adv': 1,
+            'fr': 'auc_adv'
+        }
     query_string = urllib.parse.urlencode(params, quote_via=urllib.parse.quote_plus)
     url = f"https://auctions.yahoo.co.jp/pastbidsearch/closedsearch?{query_string}"
+    # --- ここから下は通信と解析 ---
+    print(f"生成URL: {url}") # デバッグ用に表示して確認できます
 
-    options = Options()
-    # options.add_argument('--headless')
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    query_string = urllib.parse.urlencode(params)
+    url = f"https://auctions.yahoo.co.jp/pastbidsearch/closedsearch?{query_string}"
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+        "Referer": "https://auctions.yahoo.co.jp/"
+    }
 
     try:
-        driver.get(url)
-        time.sleep(4) # 🛡️ 画面が完全に出るまで長めに待つ
-
-        # 🛡️ ページ全体のテキストを「力技」で取得
-        page_text = driver.find_element(By.TAG_NAME, "body").text
+        time.sleep(1.0) 
         
-        # 🛡️ 「平均」の後に続く数字を正規表現で引っこ抜く
-        # 例: "平均\n4,686円" や "平均 4,686円" に対応
-        match = re.search(r"平均\s*([\d,]+)円", page_text)
-        
-        # 🛡️ 件数も同様に取得
-        count_match = re.search(r"([\d,]+)件", page_text)
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
 
-        if match:
-            avg_price = int(match.group(1).replace(',', ''))
-            count = int(count_match.group(1).replace(',', '')) if count_match else 1
-            return avg_price, count
-            
+        price_elements = soup.select('.Price__value')
+        
+        prices = []
+        for el in price_elements:
+            price_text = "".join(filter(str.isdigit, el.get_text()))
+            if price_text:
+                prices.append(int(price_text))
+        
+        if prices:
+            avg = sum(prices) / len(prices)
+            return int(avg), len(prices)
+        
+        if prices:
+            avg = sum(prices) / len(prices)
+            return int(avg), len(prices)
     except Exception as e:
-        pass
-    finally:
-        driver.quit()
+        print(f" 通信エラー: {e}")
         
     return 0, 0
-        
-    
 
 
 
