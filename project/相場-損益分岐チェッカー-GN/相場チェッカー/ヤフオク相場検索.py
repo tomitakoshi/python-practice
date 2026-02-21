@@ -85,6 +85,9 @@ def main():
     if df is not None:
         print("\n=== 相場取得を開始します ===")
 
+        avg_prices = []
+        counts = []
+
         for name in df['商品名']:
             print(f"検索中: {name[:30]}...", end="", flush=True)
             avg_price, count = get_yahoo_average(name)
@@ -93,9 +96,20 @@ def main():
                 print(f" 完了！ [平均: {avg_price:,}円 / {count}件]")
             else:
                 print(" データが見当たらないか、取得に失敗しました。")
+
+            avg_prices.append(avg_price)
+            counts.append(count)
             time.sleep(1.5)
         
+        df['平均価格'] = avg_prices
+        df['落札件数'] = counts
+
+        output_file = CSV_FILE.replace('.csv', '_result.csv')
+        df.to_csv(output_file, index=False, encoding='utf-8-sig')
+
+
         print("\n=== すべての工程が終了しました ===")
+        print(f"結果を保存しました: {output_file}")
     
     else:
         print("データ取得エラー")
