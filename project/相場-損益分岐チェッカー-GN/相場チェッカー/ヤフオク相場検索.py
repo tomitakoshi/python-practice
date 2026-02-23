@@ -17,31 +17,19 @@ import threading
 # 設定：ここを実際のファイル名に合わせてください
 CSV_FILE = 'C:/Users/tomit/python-practice/project/相場-損益分岐チェッカー-GN/相場チェッカー/list.csv'
 
-def get_yahoo_average(product_name):
+def get_yahoo_average(driver, product_name): # 🛡️ driverを引数に追加
     clean_name = product_name.replace('/', ' ').strip()
     params = {'va': clean_name, 'ei': 'UTF-8', 'f_adv': 1, 'fr': 'auc_adv'}
     query_string = urllib.parse.urlencode(params, quote_via=urllib.parse.quote_plus)
     url = f"https://auctions.yahoo.co.jp/pastbidsearch/closedsearch?{query_string}"
 
-    options = Options()
-    options.add_argument('--headless')
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-
     try:
         driver.get(url)
-
         wait = WebDriverWait(driver, 5)
         wait.until(EC.presence_of_element_located((By.TAG_NAME, "body")))
 
         page_text = driver.find_element(By.TAG_NAME, "body").text
-        
-        # 🛡️ 「平均」の後に続く数字を正規表現で引っこ抜く
-        # 例: "平均\n4,686円" や "平均 4,686円" に対応
         match = re.search(r"平均\s*([\d,]+)円", page_text)
-        
-        # 🛡️ 件数も同様に取得
         count_match = re.search(r"([\d,]+)件", page_text)
 
         if match:
@@ -51,11 +39,9 @@ def get_yahoo_average(product_name):
             
     except Exception as e:
         pass
-    finally:
-        driver.quit()
-        
+    # 🛡️ ここで driver.quit() はしない 次に使う
     return 0, 0
-        
+
     
 
 
@@ -82,33 +68,48 @@ def read_file():
         print(f"予期せぬエラーが発生しました: {e}")
         return None
 
-def main(status_label, app): # appも受け取れるように変更
+def main(status_label, app):
     df = read_file()
     if df is not None:
-        total = len(df)
-        avg_prices = []
-        counts = []
+        # 🛡️ ここでブラウザの準備を1回だけ行う
+        options = Options()
+        options.add_argument('--headless')
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_argument('--blink-settings=imagesEnabled=false')
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-        for i, name in enumerate(df['商品名'], 1):
-            # 🛡️ 進捗をGUIに表示
-            status_text = f"【進捗: {i}/{total}件】\n検索中: {name[:20]}..."
-            app.after(0, lambda: status_label.configure(text=status_text, text_color="orange"))
+        try: # 🛡️ 全体が終わったら確実にブラウザを閉じるための try
+            total = len(df)
+            avg_prices = []
+            counts = []
+
+            for i, name in enumerate(df['商品名'], 1):
+                status_text = f"【進捗: {i}/{total}件】\n検索中: {name[:20]}..."
+                app.after(0, lambda t=status_text: status_label.configure(text=t, text_color="orange"))
+                
+                # 🛡️ 起動済みの driver を渡す（爆速化の核心）
+                avg_price, count = get_yahoo_average(driver, name)
+                
+                avg_prices.append(avg_price)
+                counts.append(count)
+                time.sleep(1.0) # BAN防止の適度な休憩
             
-            avg_price, count = get_yahoo_average(name)
-            avg_prices.append(avg_price)
-            counts.append(count)
-            time.sleep(1.0)
-        
-        df['平均価格'] = avg_prices
-        df['落札件数'] = counts
-        output_file = CSV_FILE.replace('.csv', '_result.csv')
-        df.to_csv(output_file, index=False, encoding='utf-8-sig')
+            df['平均価格'] = avg_prices
+            df['落札件数'] = counts
+            output_file = CSV_FILE.replace('.csv', '_result.csv')
+            df.to_csv(output_file, index=False, encoding='utf-8-sig')
 
-        # 🛡️ 完了表示
-        final_text = f"✅ 完了！ ({total}/{total}件)\n保存先: {output_file}"
-        app.after(0, lambda: status_label.configure(text=final_text, text_color="lightgreen"))
+            final_text = f"✅ 完了！ ({total}/{total}件)\n保存先: {output_file}"
+            app.after(0, lambda t=final_text: status_label.configure(text=t, text_color="lightgreen"))
+        
+        finally:
+            # 🛡️ すべての検索が終わったら最後に1回だけ閉じる
+            driver.quit()
+            
     else:
         app.after(0, lambda: status_label.configure(text="❌ ファイル読み込み失敗", text_color="red"))
+
 
 def start_gui():
     ctk.set_appearance_mode("dark")
@@ -124,12 +125,10 @@ def start_gui():
     status_label = ctk.CTkLabel(app, text="待機中", font=("Meiryo", 14), justify="left")
     status_label.pack(pady=10)
 
-    # 🛡️ ボタンが押された時の動作を「別動隊（スレッド）」で起動するように変更
     def on_click():
         button.configure(state="disabled") # 二重クリック防止
-        # threadingを使ってmain関数を裏で動かす
         thread = threading.Thread(target=main, args=(status_label, app))
-        thread.daemon = True # アプリを閉じたらスレッドも終了させる設定
+        thread.daemon = True # アプリを閉じたらスレッドも終了させる
         thread.start()
 
     button = ctk.CTkButton(app, text="相場取得スタート", command=on_click)
