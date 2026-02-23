@@ -13,11 +13,14 @@ from webdriver_manager.chrome import ChromeDriverManager
 import time
 import re
 import threading
+import customtkinter as ctk
+from tkinter import filedialog
+import os
 
 # 設定：ここを実際のファイル名に合わせてください
 CSV_FILE = 'C:/Users/tomit/python-practice/project/相場-損益分岐チェッカー-GN/相場チェッカー/list.csv'
 
-def get_yahoo_average(driver, product_name): # 🛡️ driverを引数に追加
+def get_yahoo_average(driver, product_name):
     clean_name = product_name.replace('/', ' ').strip()
     params = {'va': clean_name, 'ei': 'UTF-8', 'f_adv': 1, 'fr': 'auc_adv'}
     query_string = urllib.parse.urlencode(params, quote_via=urllib.parse.quote_plus)
@@ -39,12 +42,8 @@ def get_yahoo_average(driver, product_name): # 🛡️ driverを引数に追加
             
     except Exception as e:
         pass
-    # 🛡️ ここで driver.quit() はしない 次に使う
+    #ここで driver.quit() はしない 次に使う
     return 0, 0
-
-    
-
-
 
 def read_file():
     try:
@@ -68,10 +67,10 @@ def read_file():
         print(f"予期せぬエラーが発生しました: {e}")
         return None
 
-def main(status_label, app):
-    df = read_file()
+def main(input_path, output_path, status_label, progress_bar, app):
+    df = pd.read_csv(input_path, encoding='utf-8')
+
     if df is not None:
-        # 🛡️ ここでブラウザの準備を1回だけ行う
         options = Options()
         options.add_argument('--headless')
         options.add_argument('--disable-blink-features=AutomationControlled')
@@ -79,60 +78,95 @@ def main(status_label, app):
         options.add_argument('--blink-settings=imagesEnabled=false')
         driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-        try: # 🛡️ 全体が終わったら確実にブラウザを閉じるための try
+        try:
             total = len(df)
+            app.after(0, lambda: progress_bar.set(0))
             avg_prices = []
             counts = []
 
             for i, name in enumerate(df['商品名'], 1):
+                progress_value = i / total
                 status_text = f"【進捗: {i}/{total}件】\n検索中: {name[:20]}..."
-                app.after(0, lambda t=status_text: status_label.configure(text=t, text_color="orange"))
-                
-                # 🛡️ 起動済みの driver を渡す（爆速化の核心）
+                app.after(0, lambda p=progress_value, t=status_text: (
+                    progress_bar.set(p), 
+                    status_label.configure(text=t, text_color="orange")
+                ))
                 avg_price, count = get_yahoo_average(driver, name)
-                
                 avg_prices.append(avg_price)
                 counts.append(count)
-                time.sleep(1.0) # BAN防止の適度な休憩
+                time.sleep(1.0)
             
             df['平均価格'] = avg_prices
             df['落札件数'] = counts
-            output_file = CSV_FILE.replace('.csv', '_result.csv')
-            df.to_csv(output_file, index=False, encoding='utf-8-sig')
+            
+            # 🛡️ 指定された保存先に書き出し
+            df.to_csv(output_path, index=False, encoding='utf-8-sig')
 
-            final_text = f"✅ 完了！ ({total}/{total}件)\n保存先: {output_file}"
+            final_text = f"✅ 完了！\n保存しました:\n{os.path.basename(output_path)}"
             app.after(0, lambda t=final_text: status_label.configure(text=t, text_color="lightgreen"))
-        
         finally:
-            # 🛡️ すべての検索が終わったら最後に1回だけ閉じる
             driver.quit()
             
     else:
         app.after(0, lambda: status_label.configure(text="❌ ファイル読み込み失敗", text_color="red"))
 
-
 def start_gui():
     ctk.set_appearance_mode("dark")
-    ctk.set_default_color_theme("blue")
-
     app = ctk.CTk()
     app.title("ヤフオク相場チェッカー Pro")
-    app.geometry("600x400")
+    app.geometry("700x500")
 
-    label = ctk.CTkLabel(app, text="ヤフオク相場自動取得ツール", font=("Meiryo", 20))
+    # パスを保持する変数
+    input_file_path = ctk.StringVar(value="未選択")
+    output_file_path = ctk.StringVar(value="未選択")
+
+    # --- レイアウト ---
+    label = ctk.CTkLabel(app, text="ヤフオク相場自動取得ツール", font=("Meiryo", 22, "bold"))
     label.pack(pady=20)
 
-    status_label = ctk.CTkLabel(app, text="待機中", font=("Meiryo", 14), justify="left")
-    status_label.pack(pady=10)
+    # プログレスバーの設置
+    progress_bar = ctk.CTkProgressBar(app, width=400)
+    progress_bar.pack(pady=10)
+    progress_bar.set(0)
 
-    def on_click():
-        button.configure(state="disabled") # 二重クリック防止
-        thread = threading.Thread(target=main, args=(status_label, app))
-        thread.daemon = True # アプリを閉じたらスレッドも終了させる
+    # 入力ファイル選択
+    def select_input():
+        path = filedialog.askopenfilename(filetypes=[("CSVファイル", "*.csv")])
+        if path:
+            input_file_path.set(path)
+            # 自動で保存先も提案（同じフォルダに _result をつける）
+            suggested_output = path.replace(".csv", "_result.csv")
+            output_file_path.set(suggested_output)
+
+    input_btn = ctk.CTkButton(app, text="① 読み込むCSVを選択", command=select_input)
+    input_btn.pack(pady=5)
+    ctk.CTkLabel(app, textvariable=input_file_path, font=("Meiryo", 10), text_color="gray").pack()
+
+    # 保存先選択
+    def select_output():
+        path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSVファイル", "*.csv")])
+        if path:
+            output_file_path.set(path)
+
+    output_btn = ctk.CTkButton(app, text="② 保存先を確認/変更", command=select_output, fg_color="transparent", border_width=1)
+    output_btn.pack(pady=5)
+    ctk.CTkLabel(app, textvariable=output_file_path, font=("Meiryo", 10), text_color="gray").pack()
+
+    status_label = ctk.CTkLabel(app, text="待機中", font=("Meiryo", 14))
+    status_label.pack(pady=20)
+
+    def on_start():
+        if input_file_path.get() == "未選択":
+            status_label.configure(text="❌ ファイルを選択してください", text_color="red")
+            return
+        
+        start_button.configure(state="disabled")
+        thread = threading.Thread(target=main, args=(input_file_path.get(), output_file_path.get(), status_label, progress_bar, app))
+        thread.daemon = True
         thread.start()
 
-    button = ctk.CTkButton(app, text="相場取得スタート", command=on_click)
-    button.pack(pady=20)
+    start_button = ctk.CTkButton(app, text="相場取得スタート", command=on_start, fg_color="green", hover_color="darkgreen")
+    start_button.pack(pady=20)
 
     app.mainloop()
 
