@@ -99,7 +99,18 @@ def main(input_path, output_path, status_label, progress_bar, app):
             df['平均価格'] = avg_prices
             df['落札件数'] = counts
             
-            # 🛡️ 指定された保存先に書き出し
+            FEE_RATE = 0.10      # 販売手数料 (10%)
+            SHIPPING_FEE = 800   # 想定送料 (一律800円と仮定)
+            PROFIT_MARGIN = 0.10 # 最低確保したい利益率 (10%)
+            df['損益分岐点'] = df['平均価格'].apply(
+                lambda x: int(x * (1 - FEE_RATE) - SHIPPING_FEE) if x > 0 else 0
+            )
+            df['目標仕入れ値'] = df['平均価格'].apply(
+                lambda x: int(x * (1 - FEE_RATE - PROFIT_MARGIN) - SHIPPING_FEE) if x > 0 else 0
+            )
+            df.loc[df['損益分岐点'] < 0, '損益分岐点'] = 0
+            df.loc[df['目標仕入れ値'] < 0, '目標仕入れ値'] = 0
+            
             df.to_csv(output_path, index=False, encoding='utf-8-sig')
 
             final_text = f"✅ 完了！\n保存しました:\n{os.path.basename(output_path)}"
@@ -128,6 +139,30 @@ def start_gui():
     progress_bar = ctk.CTkProgressBar(app, width=400)
     progress_bar.pack(pady=10)
     progress_bar.set(0)
+
+    
+    # 送料手数料入力
+    setting_frame = ctk.CTkFrame(app)
+    setting_frame.pack(pady=20, padx=40, fill="x")
+
+    ctk.CTkLabel(setting_frame, text="【利益計算設定】", font=("Meiryo", 14, "bold")).grid(row=0, column=0, columnspan=4, pady=10)
+
+    ## 1行目：手数料と送料
+    ctk.CTkLabel(setting_frame, text="販売手数料 (%) :").grid(row=1, column=0, padx=10, pady=5, sticky="e")
+    fee_entry = ctk.CTkEntry(setting_frame, width=70)
+    fee_entry.insert(0, "10")
+    fee_entry.grid(row=1, column=1, padx=5, pady=5, sticky="w")
+
+    ctk.CTkLabel(setting_frame, text="想定送料 (円) :").grid(row=1, column=2, padx=10, pady=5, sticky="e")
+    shipping_entry = ctk.CTkEntry(setting_frame, width=90)
+    shipping_entry.insert(0, "800")
+    shipping_entry.grid(row=1, column=3, padx=5, pady=5, sticky="w")
+
+    ## 2行目：利益率
+    ctk.CTkLabel(setting_frame, text="確保したい利益 (%) :").grid(row=2, column=0, padx=10, pady=5, sticky="e")
+    margin_entry = ctk.CTkEntry(setting_frame, width=70)
+    margin_entry.insert(0, "10")
+    margin_entry.grid(row=2, column=1, padx=5, pady=5, sticky="w")
 
     # 入力ファイル選択
     def select_input():
@@ -159,9 +194,27 @@ def start_gui():
         if input_file_path.get() == "未選択":
             status_label.configure(text="❌ ファイルを選択してください", text_color="red")
             return
+    
+        try:
+                fee = float(fee_entry.get()) / 100
+                ship = int(shipping_entry.get())
+                margin = float(margin_entry.get()) / 100
+        except ValueError:
+            status_label.configure(text="❌ 数値を正しく入力してください", text_color="red")
+            return
         
         start_button.configure(state="disabled")
-        thread = threading.Thread(target=main, args=(input_file_path.get(), output_file_path.get(), status_label, progress_bar, app))
+
+        thread = threading.Thread(target=main, args=(
+            input_file_path.get(), 
+            output_file_path.get(), 
+            status_label, 
+            progress_bar, 
+            app,
+            fee,    # mainに渡す
+            ship,   # mainに渡す
+            margin  # mainに渡す
+        ))
         thread.daemon = True
         thread.start()
 

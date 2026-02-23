@@ -1,6 +1,6 @@
-﻿箱番,商品No,商品名,平均価格,落札件数
-1,1,Canon FTb / Canon Lens FD 50mm F1.8 S.C.,4985,12
-1,2,Nikon Nikomat FTN / Micro-Nikkor-P･C Auto 55mm F3.5,13079,21121
-1,3,Canon EOS-1 N / Canon Power Drive Booster E1,14643,43
-1,4,Nikon Nikomat EL ブラック / New Nikkor 50mm F1.4,14428,34420
-1,5,Canon FTb QL / Canon Lens FD 50mm F1.4 S.S.C,4790,9
+﻿箱番,商品No,商品名,平均価格,落札件数,損益分岐点,目標仕入れ値
+1,1,Canon FTb / Canon Lens FD 50mm F1.8 S.C.,4985,12,3686,3188
+1,2,Nikon Nikomat FTN / Micro-Nikkor-P･C Auto 55mm F3.5,12933,21062,10839,9546
+1,3,Canon EOS-1 N / Canon Power Drive Booster E1,14643,43,12378,10914
+1,4,Nikon Nikomat EL ブラック / New Nikkor 50mm F1.4,14546,34769,12291,10836
+1,5,Canon FTb QL / Canon Lens FD 50mm F1.4 S.S.C,4790,9,3511,3032
